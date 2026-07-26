@@ -161,10 +161,20 @@ const camera = new Camera(videoElement, {
     height: 480
 });
 
-camera.start().catch(err => {
-    statusDiv.innerText = "❌ Camera Error: Clear permissions!";
-    statusDiv.className = "mt-6 text-xs text-center bg-red-500/10 text-red-400 p-2 rounded-lg border border-red-500/20 font-mono";
-});
+// Replace your previous camera.start() block with this exact initialization syntax:
+navigator.mediaDevices.getUserMedia({ video: true })
+    .then(() => {
+        // Safe access confirmed, execute MediaPipe loop initialization
+        camera.start().catch(err => {
+            statusDiv.innerText = "❌ MediaPipe Hook Error: " + err.message;
+            statusDiv.className = "mt-6 text-xs text-center bg-red-500/10 text-red-400 p-2 rounded-lg border border-red-500/20 font-mono";
+        });
+    })
+    .catch(err => {
+        statusDiv.innerText = "🔒 Blocked! Click the camera icon in your URL bar to grant access.";
+        statusDiv.className = "mt-6 text-xs text-center bg-red-500/10 text-red-400 p-2 rounded-lg border border-red-500/20 font-mono";
+    });
+
 
 </script>
 
