@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yasmine's Birthday Surprise</title>
+    <!-- Tailwind CSS for UI -->
+    <script src="https://jsdelivr.net"></script>
+    <!-- MediaPipe Hand Tracking Links -->
+    <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
+    <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
+    <!-- Canvas Confetti Animations -->
+    <script src="https://jsdelivr.net"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col md:flex-row p-6 gap-6 font-sans">
+
+    <!-- SIDEBAR CONTROL PANEL -->
+    <div class="w-full md:w-80 bg-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+        <div>
+            <h1 class="text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-violet-400 mb-2">
+                🎂 Yasmine's Magic Hand Scanner
+            </h1>
+            <p class="text-sm text-slate-400 mb-6">Connect your thumb to different fingers to unlock your birthday messages!</p>
+            
+            <h3 class="font-bold text-slate-300 uppercase tracking-wider text-xs mb-3">🪄 Magic Spells:</h3>
+            <ul class="space-y-3 text-sm">
+                <li class="bg-slate-700/50 p-3 rounded-xl border border-pink-500/20"><span class="text-lg">👌</span> <strong>Thumb + Index</strong>: Projects <span class="text-pink-400 font-bold">"Happy"</span></li>
+                <li class="bg-slate-700/50 p-3 rounded-xl border border-amber-500/20"><span class="text-lg">🖕</span> <strong>Thumb + Middle</strong>: Projects <span class="text-amber-400 font-bold">"Birthday"</span></li>
+                <li class="bg-slate-700/50 p-3 rounded-xl border border-emerald-500/20"><span class="text-lg">👌</span> <strong>Thumb + Ring</strong>: Projects <span class="text-emerald-400 font-bold">"Yasmine!"</span></li>
+            </ul>
+        </div>
+        <div id="status" class="mt-6 text-xs text-center bg-amber-500/10 text-amber-400 p-2 rounded-lg border border-amber-500/20 font-mono animate-pulse">
+            Waiting for camera access...
+        </div>
+    </div>
+
+    <!-- MAIN CAMERA CANVAS LAYER -->
+    <div class="flex-1 bg-slate-950 rounded-2xl relative shadow-2xl overflow-hidden flex items-center justify-center min-h-[480px]">
+        <!-- Hidden raw video stream element -->
+        <video id="webcam" autoplay playsinline class="hidden"></video>
+        <!-- Visible output canvas with custom text overlays -->
+        <canvas id="output_canvas" class="w-full h-full max-h-[720px] object-contain transform -scale-x-100"></canvas>
+    </div>
+
+    <!-- INJECT JAVASCRIPT LOGIC HERE (Step 2 & 3) -->
+<script>
+const videoElement = document.getElementById('webcam');
+const canvasElement = document.getElementById('output_canvas');
+const canvasCtx = canvasElement.getContext('2d');
+const statusDiv = document.getElementById('status');
+
+// Trigger immediate celebratory screen explosion on bootup
+confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+
+// Match your distance threshold configuration from Streamlit
+const PINCH_THRESHOLD = 0.06; 
+
+function onResults(results) {
+    // Clear previous drawing frame and size the canvas dynamically
+    canvasElement.width = videoElement.videoWidth;
+    canvasElement.height = videoElement.videoHeight;
+    
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+    
+    // Draw the raw camera mirror image onto our visible window canvas
+    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+        statusDiv.innerText = "✨ Magic Active!";
+        statusDiv.className = "mt-6 text-xs text-center bg-emerald-500/10 text-emerald-400 p-2 rounded-lg border border-emerald-500/20 font-mono";
+
+        const landmarks = results.multiHandLandmarks[0];
+
+        // MediaPipe JavaScript Hand index references:
+        const thumb = landmarks[4];
+        const index = landmarks[8];
+        const middle = landmarks[12];
+        const ring = landmarks[16];
+
+        // Math: Calculate 3D Euclidean Distance inside the normalized coordinate system
+        const getDist = (p1, p2) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+
+        const distIndex = getDist(thumb, index);
+        const distMiddle = getDist(thumb, middle);
+        const distRing = getDist(thumb, ring);
+
+        let displayText = "";
+        let color = "#ffffff";
+
+        // Logic check matching your Python engine flow
+        if (distIndex < PINCH_THRESHOLD && distIndex < distMiddle && distIndex < distRing) {
+            displayText = "Happy";
+            color = "#f472b6"; // Pink-400
+        } else if (distMiddle < PINCH_THRESHOLD && distMiddle < distIndex && distMiddle < distRing) {
+            displayText = "Birthday";
+            color = "#fbbf24"; // Amber-400
+        } else if (distRing < PINCH_THRESHOLD && distRing < distIndex && distRing < distMiddle) {
+            displayText = "Yasmine!";
+            color = "#34d399"; // Emerald-400
+        }
+
+        // Draw HUD overlay matching OpenCV output formatting
+        if (displayText) {
+            // Translate track positions back into pixel coordinates
+            const x = thumb.x * canvasElement.width;
+            const y = thumb.y * canvasElement.height;
+
+            canvasCtx.font = "bold 42px system-ui, sans-serif";
+            const textWidth = canvasCtx.measureText(displayText).width;
+            const padding = 20;
+
+            // Draw bounding white bubble box behind text
+            canvasCtx.fillStyle = "#ffffff";
+            canvasCtx.beginPath();
+            canvasCtx.roundRect(x - (textWidth/2) - padding, y - 90, textWidth + (padding * 2), 65, 16);
+            canvasCtx.fill();
+
+            // Render a stylized color boundary stroke around text box
+            canvasCtx.lineWidth = 4;
+            canvasCtx.strokeStyle = color;
+            canvasCtx.stroke();
+
+            // Print the dynamic text message directly above the tracked pinch position
+            canvasCtx.fillStyle = color;
+            canvasCtx.textAlign = "center";
+            canvasCtx.fillText(displayText, x, y - 44);
+
+            // Draw a tiny radar dot tracker point on the active finger connection
+            canvasCtx.fillStyle = color;
+            canvasCtx.beginPath();
+            canvasCtx.arc(x, y, 12, 0, 2 * Math.PI);
+            canvasCtx.fill();
+        }
+    } else {
+        statusDiv.innerText = "👋 Show your hand to begin!";
+        statusDiv.className = "mt-6 text-xs text-center bg-blue-500/10 text-blue-400 p-2 rounded-lg border border-blue-500/20 font-mono";
+    }
+    canvasCtx.restore();
+}
+// Link and configure MediaPipe operational runtime
+const hands = new Hands({
+    locateFile: (file) => `https://jsdelivr.net{file}`
+});
+
+hands.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.7,
+    minTrackingConfidence: 0.7
+});
+
+hands.onResults(onResults);
+
+// Direct browser camera utility to pass frames to MediaPipe
+const camera = new Camera(videoElement, {
+    onFrame: async () => {
+        await hands.send({image: videoElement});
+    },
+    width: 640,
+    height: 480
+});
+
+camera.start().catch(err => {
+    statusDiv.innerText = "❌ Camera Error: Clear permissions!";
+    statusDiv.className = "mt-6 text-xs text-center bg-red-500/10 text-red-400 p-2 rounded-lg border border-red-500/20 font-mono";
+});
+
+</script>
+
+</body>
+</html>
