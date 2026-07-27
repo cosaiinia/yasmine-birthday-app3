@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Yasmine's Birthday Surprise</title>
-    <!-- Tailwind CSS for UI -->
+    <!-- Tailwind CSS for UI Layout -->
     <script src="https://jsdelivr.net"></script>
-    <!-- MediaPipe Hand Tracking Links -->
+    <!-- MediaPipe Hand Tracking Engines -->
     <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
     <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
     <!-- Canvas Confetti Animations -->
@@ -36,149 +36,135 @@
 
     <!-- MAIN CAMERA CANVAS LAYER -->
     <div class="flex-1 bg-slate-950 rounded-2xl relative shadow-2xl overflow-hidden flex items-center justify-center min-h-[480px]">
-        <!-- Hidden raw video stream element -->
-        <video id="webcam" autoplay playsinline class="hidden"></video>
-        <!-- Visible output canvas with custom text overlays -->
+        <!-- Hidden raw video element -->
+        <video id="webcam" autoplay playsinline style="display:none;"></video>
+        <!-- Visible output canvas rendering mirror data -->
         <canvas id="output_canvas" class="w-full h-full max-h-[720px] object-contain transform -scale-x-100"></canvas>
     </div>
 
-    <!-- INJECT JAVASCRIPT LOGIC HERE (Step 2 & 3) -->
-<script>
-const videoElement = document.getElementById('webcam');
-const canvasElement = document.getElementById('output_canvas');
-const canvasCtx = canvasElement.getContext('2d');
-const statusDiv = document.getElementById('status');
+    <script>
+    const videoElement = document.getElementById('webcam');
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const statusDiv = document.getElementById('status');
 
-// Trigger immediate celebratory screen explosion on bootup
-confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+    // Pop initial page confetti splash
+    confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
 
-// Match your distance threshold configuration from Streamlit
-const PINCH_THRESHOLD = 0.06; 
+    // Distance threshold limit (Adjust lower if too sensitive)
+    const PINCH_THRESHOLD = 0.05; 
 
-function onResults(results) {
-    // Clear previous drawing frame and size the canvas dynamically
-    canvasElement.width = videoElement.videoWidth;
-    canvasElement.height = videoElement.videoHeight;
-    
-    canvasCtx.save();
-    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-    
-    // Draw the raw camera mirror image onto our visible window canvas
-    canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+    function onResults(results) {
+        // Automatically link resolution sizes
+        canvasElement.width = videoElement.videoWidth || 640;
+        canvasElement.height = videoElement.videoHeight || 480;
+        
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+        
+        // Render the raw camera canvas viewport frames
+        canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-        statusDiv.innerText = "✨ Magic Active!";
-        statusDiv.className = "mt-6 text-xs text-center bg-emerald-500/10 text-emerald-400 p-2 rounded-lg border border-emerald-500/20 font-mono";
+        if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+            statusDiv.innerText = "✨ Magic Active!";
+            statusDiv.className = "mt-6 text-xs text-center bg-emerald-500/10 text-emerald-400 p-2 rounded-lg border border-emerald-500/20 font-mono";
 
-    // Grab the very first hand detected in the camera frame [0]
-        const handPoints = results.multiHandLandmarks[0];
+            const handPoints = results.multiHandLandmarks[0];
 
-    // Map individual tracking points to their exact MediaPipe ID numbers:
-        const thumb = handPoints[4];   // THUMB_TIP is ID 4
-        const index = handPoints[8];   // INDEX_FINGER_TIP is ID 8
-        const middle = handPoints[12]; // MIDDLE_FINGER_TIP is ID 12
-        const ring = handPoints[16];   // RING_FINGER_TIP is ID 16
+            // Point definitions
+            const thumb = handPoints[4];   // THUMB_TIP
+            const index = handPoints[8];   // INDEX_FINGER_TIP
+            const middle = handPoints[12]; // MIDDLE_FINGER_TIP
+            const ring = handPoints[16];   // RING_FINGER_TIP
 
+            // 3D Distance formulation calculation logic
+            const getDist = (p1, p2) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
 
-        // Math: Calculate 3D Euclidean Distance inside the normalized coordinate system
-        const getDist = (p1, p2) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+            const distIndex = getDist(thumb, index);
+            const distMiddle = getDist(thumb, middle);
+            const distRing = getDist(thumb, ring);
 
-        const distIndex = getDist(thumb, index);
-        const distMiddle = getDist(thumb, middle);
-        const distRing = getDist(thumb, ring);
+            let displayText = "";
+            let color = "#ffffff";
 
-        let displayText = "";
-        let color = "#ffffff";
+            if (distIndex < PINCH_THRESHOLD && distIndex < distMiddle && distIndex < distRing) {
+                displayText = "Happy";
+                color = "#f472b6"; 
+            } else if (distMiddle < PINCH_THRESHOLD && distMiddle < distIndex && distMiddle < distRing) {
+                displayText = "Birthday";
+                color = "#fbbf24"; 
+            } else if (distRing < PINCH_THRESHOLD && distRing < distIndex && distRing < distMiddle) {
+                displayText = "Yasmine!";
+                color = "#34d399"; 
+            }
 
-        // Logic check matching your Python engine flow
-        if (distIndex < PINCH_THRESHOLD && distIndex < distMiddle && distIndex < distRing) {
-            displayText = "Happy";
-            color = "#f472b6"; // Pink-400
-        } else if (distMiddle < PINCH_THRESHOLD && distMiddle < distIndex && distMiddle < distRing) {
-            displayText = "Birthday";
-            color = "#fbbf24"; // Amber-400
-        } else if (distRing < PINCH_THRESHOLD && distRing < distIndex && distRing < distMiddle) {
-            displayText = "Yasmine!";
-            color = "#34d399"; // Emerald-400
+            if (displayText) {
+                const x = thumb.x * canvasElement.width;
+                const y = thumb.y * canvasElement.height;
+
+                canvasCtx.font = "bold 42px system-ui, sans-serif";
+                const textWidth = canvasCtx.measureText(displayText).width;
+                const padding = 20;
+
+                // Render dynamic text frame box backing blocks
+                canvasCtx.fillStyle = "#ffffff";
+                canvasCtx.beginPath();
+                canvasCtx.roundRect(x - (textWidth/2) - padding, y - 90, textWidth + (padding * 2), 65, 16);
+                canvasCtx.fill();
+
+                canvasCtx.lineWidth = 4;
+                canvasCtx.strokeStyle = color;
+                canvasCtx.stroke();
+
+                canvasCtx.fillStyle = color;
+                canvasCtx.textAlign = "center";
+                canvasCtx.fillText(displayText, x, y - 44);
+
+                canvasCtx.fillStyle = color;
+                canvasCtx.beginPath();
+                canvasCtx.arc(x, y, 12, 0, 2 * Math.PI);
+                canvasCtx.fill();
+            }
+        } else {
+            statusDiv.innerText = "👋 Show your hand to begin!";
+            statusDiv.className = "mt-6 text-xs text-center bg-blue-500/10 text-blue-400 p-2 rounded-lg border border-blue-500/20 font-mono";
         }
-
-        // Draw HUD overlay matching OpenCV output formatting
-        if (displayText) {
-            // Translate track positions back into pixel coordinates
-            const x = thumb.x * canvasElement.width;
-            const y = thumb.y * canvasElement.height;
-
-            canvasCtx.font = "bold 42px system-ui, sans-serif";
-            const textWidth = canvasCtx.measureText(displayText).width;
-            const padding = 20;
-
-            // Draw bounding white bubble box behind text
-            canvasCtx.fillStyle = "#ffffff";
-            canvasCtx.beginPath();
-            canvasCtx.roundRect(x - (textWidth/2) - padding, y - 90, textWidth + (padding * 2), 65, 16);
-            canvasCtx.fill();
-
-            // Render a stylized color boundary stroke around text box
-            canvasCtx.lineWidth = 4;
-            canvasCtx.strokeStyle = color;
-            canvasCtx.stroke();
-
-            // Print the dynamic text message directly above the tracked pinch position
-            canvasCtx.fillStyle = color;
-            canvasCtx.textAlign = "center";
-            canvasCtx.fillText(displayText, x, y - 44);
-
-            // Draw a tiny radar dot tracker point on the active finger connection
-            canvasCtx.fillStyle = color;
-            canvasCtx.beginPath();
-            canvasCtx.arc(x, y, 12, 0, 2 * Math.PI);
-            canvasCtx.fill();
-        }
-    } else {
-        statusDiv.innerText = "👋 Show your hand to begin!";
-        statusDiv.className = "mt-6 text-xs text-center bg-blue-500/10 text-blue-400 p-2 rounded-lg border border-blue-500/20 font-mono";
+        canvasCtx.restore();
     }
-    canvasCtx.restore();
-}
-// Link and configure MediaPipe operational runtime
-const hands = new Hands({
-    locateFile: (file) => `https://jsdelivr.net{file}`
-});
 
-hands.setOptions({
-    maxNumHands: 1,
-    modelComplexity: 1,
-    minDetectionConfidence: 0.7,
-    minTrackingConfidence: 0.7
-});
-
-hands.onResults(onResults);
-
-// Direct browser camera utility to pass frames to MediaPipe
-const camera = new Camera(videoElement, {
-    onFrame: async () => {
-        await hands.send({image: videoElement});
-    },
-    width: 640,
-    height: 480
-});
-
-// Replace your previous camera.start() block with this exact initialization syntax:
-navigator.mediaDevices.getUserMedia({ video: true })
-    .then(() => {
-        // Safe access confirmed, execute MediaPipe loop initialization
-        camera.start().catch(err => {
-            statusDiv.innerText = "❌ MediaPipe Hook Error: " + err.message;
-            statusDiv.className = "mt-6 text-xs text-center bg-red-500/10 text-red-400 p-2 rounded-lg border border-red-500/20 font-mono";
-        });
-    })
-    .catch(err => {
-        statusDiv.innerText = "🔒 Blocked! Click the camera icon in your URL bar to grant access.";
-        statusDiv.className = "mt-6 text-xs text-center bg-red-500/10 text-red-400 p-2 rounded-lg border border-red-500/20 font-mono";
+    // Set up and connect MediaPipe solution framework tools
+    const hands = new Hands({
+        locateFile: (file) => `https://jsdelivr.net{file}`
     });
 
+    hands.setOptions({
+        maxNumHands: 1,
+        modelComplexity: 1,
+        minDetectionConfidence: 0.6,
+        minTrackingConfidence: 0.6
+    });
 
-</script>
+    hands.onResults(onResults);
 
+    // Modern native fallback browser prompt validation logic handling
+    navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+        .then((stream) => {
+            videoElement.srcObject = stream;
+            videoElement.play();
+            
+            const camera = new Camera(videoElement, {
+                onFrame: async () => {
+                    await hands.send({image: videoElement});
+                },
+                width: 640,
+                height: 480
+            });
+            camera.start();
+        })
+        .catch((err) => {
+            statusDiv.innerText = "🔒 Blocked! Grant webcam permissions in your address bar.";
+            statusDiv.className = "mt-6 text-xs text-center bg-red-500/10 text-red-400 p-2 rounded-lg border border-red-500/20 font-mono";
+        });
+    </script>
 </body>
 </html>
