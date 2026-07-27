@@ -70,13 +70,15 @@ function onResults(results) {
         statusDiv.innerText = "✨ Magic Active!";
         statusDiv.className = "mt-6 text-xs text-center bg-emerald-500/10 text-emerald-400 p-2 rounded-lg border border-emerald-500/20 font-mono";
 
-        const landmarks = results.multiHandLandmarks[0];
+    // Grab the very first hand detected in the camera frame [0]
+        const handPoints = results.multiHandLandmarks[0];
 
-        // MediaPipe JavaScript Hand index references:
-        const thumb = landmarks[4];
-        const index = landmarks[8];
-        const middle = landmarks[12];
-        const ring = landmarks[16];
+    // Map individual tracking points to their exact MediaPipe ID numbers:
+        const thumb = handPoints[4];   // THUMB_TIP is ID 4
+        const index = handPoints[8];   // INDEX_FINGER_TIP is ID 8
+        const middle = handPoints[12]; // MIDDLE_FINGER_TIP is ID 12
+        const ring = handPoints[16];   // RING_FINGER_TIP is ID 16
+
 
         // Math: Calculate 3D Euclidean Distance inside the normalized coordinate system
         const getDist = (p1, p2) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
